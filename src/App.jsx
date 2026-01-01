@@ -1,13 +1,54 @@
+// ============================================
+// PART 1: IMPORTS, INITIAL DATA, AND STATE
+// Copy this entire part into your App.jsx
+// ============================================
+
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Trash2, Plus, Moon, Sun, Archive, Link2, Search, TrendingUp, Check, MessageSquare, X } from 'lucide-react';
+import { Sparkles, Trash2, Plus, Moon, Sun, Archive, Link2, Search, TrendingUp, Check, MessageSquare, Download, Upload, Share2, FileText, Database, Network } from 'lucide-react';
 
 const INITIAL_IDEAS = [
-  { id: 1, text: "Build a Billion Dollar Company", category: "Big Dream", size: "large", color: "bg-indigo-100 text-indigo-800", darkColor: "bg-indigo-900 text-indigo-200", aiComment: "Ambitious! Start with solving one real problem first. 🚀", sentiment: "excited", completed: false, connections: [], createdAt: Date.now() },
-  { id: 2, text: "Drink 3L Water", category: "Health", size: "small", color: "bg-teal-100 text-teal-800", darkColor: "bg-teal-900 text-teal-200", aiComment: "Simple and powerful. Your kidneys will thank you! 💧", sentiment: "positive", completed: false, connections: [], createdAt: Date.now() - 86400000 },
-  { id: 3, text: "Master React & APIs", category: "Learning", size: "wide", color: "bg-blue-100 text-blue-800", darkColor: "bg-blue-900 text-blue-200", aiComment: "This pairs perfectly with your billion dollar dream. Keep building! 💪", sentiment: "motivated", connections: [1], createdAt: Date.now() - 172800000 },
+  { 
+    id: 1, 
+    text: "Build a Billion Dollar Company", 
+    category: "Big Dream", 
+    size: "large", 
+    color: "bg-indigo-100 text-indigo-800", 
+    darkColor: "bg-indigo-900 text-indigo-200", 
+    aiComment: "Ambitious! Start with solving one real problem first. 🚀", 
+    sentiment: "excited", 
+    completed: false, 
+    connections: [], 
+    createdAt: Date.now() 
+  },
+  { 
+    id: 2, 
+    text: "Drink 3L Water", 
+    category: "Health", 
+    size: "small", 
+    color: "bg-teal-100 text-teal-800", 
+    darkColor: "bg-teal-900 text-teal-200", 
+    aiComment: "Simple and powerful. Your kidneys will thank you! 💧", 
+    sentiment: "positive", 
+    completed: false, 
+    connections: [], 
+    createdAt: Date.now() - 86400000 
+  },
+  { 
+    id: 3, 
+    text: "Master React & APIs", 
+    category: "Learning", 
+    size: "wide", 
+    color: "bg-blue-100 text-blue-800", 
+    darkColor: "bg-blue-900 text-blue-200", 
+    aiComment: "This pairs perfectly with your billion dollar dream. Keep building! 💪", 
+    sentiment: "motivated", 
+    connections: [1], 
+    createdAt: Date.now() - 172800000 
+  },
 ];
 
 function App() {
+  // Core State
   const [ideas, setIdeas] = useState(() => {
     const saved = localStorage.getItem("mindMosaicData");
     return saved ? JSON.parse(saved) : INITIAL_IDEAS;
@@ -24,6 +65,7 @@ function App() {
     return saved || "light";
   });
   
+  // UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [viewMode, setViewMode] = useState("mosaic");
@@ -31,9 +73,16 @@ function App() {
   const [linkingFrom, setLinkingFrom] = useState(null);
   const [showAIComments, setShowAIComments] = useState(true);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle");
 
+  // Persist data to localStorage
   useEffect(() => {
     localStorage.setItem("mindMosaicData", JSON.stringify(ideas));
+    if (cloudSyncEnabled) {
+      syncToCloud();
+    }
   }, [ideas]);
 
   useEffect(() => {
@@ -44,6 +93,191 @@ function App() {
     localStorage.setItem("mindMosaicTheme", theme);
   }, [theme]);
 
+  // Load from cloud when sync is enabled
+  useEffect(() => {
+    if (cloudSyncEnabled && window.storage) {
+      loadFromCloud();
+    }
+  }, [cloudSyncEnabled]);
+
+  // Continue to PART 2 for functions...
+  // ============================================
+// PART 2: CORE FUNCTIONS
+// Add these functions inside your App component (after useEffect hooks from Part 1)
+// ============================================
+
+  // Cloud Sync Functions
+  const syncToCloud = async () => {
+    if (!window.storage) return;
+    
+    setSyncStatus("syncing");
+    try {
+      await window.storage.set('mindmosaic-ideas', JSON.stringify(ideas), true);
+      await window.storage.set('mindmosaic-archived', JSON.stringify(archived), true);
+      setSyncStatus("synced");
+      setTimeout(() => setSyncStatus("idle"), 2000);
+    } catch (error) {
+      console.error("Sync failed:", error);
+      setSyncStatus("error");
+    }
+  };
+
+  const loadFromCloud = async () => {
+    if (!window.storage) {
+      alert("Cloud storage not available in this environment");
+      return;
+    }
+    
+    setSyncStatus("syncing");
+    try {
+      const ideasResult = await window.storage.get('mindmosaic-ideas', true);
+      const archivedResult = await window.storage.get('mindmosaic-archived', true);
+      
+      if (ideasResult?.value) {
+        setIdeas(JSON.parse(ideasResult.value));
+      }
+      if (archivedResult?.value) {
+        setArchived(JSON.parse(archivedResult.value));
+      }
+      
+      setSyncStatus("synced");
+      setTimeout(() => setSyncStatus("idle"), 2000);
+    } catch (error) {
+      console.error("Load failed:", error);
+      setSyncStatus("idle");
+    }
+  };
+
+  // Export Functions
+  const exportToMarkdown = () => {
+    let markdown = `# MindMosaic Export
+Generated: ${new Date().toLocaleString()}
+
+---
+
+## Active Ideas (${ideas.length})
+
+`;
+
+    const groupedByCategory = ideas.reduce((acc, idea) => {
+      if (!acc[idea.category]) acc[idea.category] = [];
+      acc[idea.category].push(idea);
+      return acc;
+    }, {});
+
+    Object.entries(groupedByCategory).forEach(([category, categoryIdeas]) => {
+      markdown += `### ${category}\n\n`;
+      categoryIdeas.forEach(idea => {
+        const status = idea.completed ? '[x]' : '[ ]';
+        markdown += `${status} **${idea.text}**\n`;
+        if (idea.aiComment) {
+          markdown += `   > AI: ${idea.aiComment}\n`;
+        }
+        if (idea.connections.length > 0) {
+          const connectedTexts = idea.connections
+            .map(id => ideas.find(i => i.id === id)?.text)
+            .filter(Boolean)
+            .join(', ');
+          markdown += `   - Connected to: ${connectedTexts}\n`;
+        }
+        markdown += `   - Created: ${new Date(idea.createdAt).toLocaleDateString()}\n`;
+        markdown += '\n';
+      });
+    });
+
+    if (archived.length > 0) {
+      markdown += `\n---\n\n## Archived Ideas (${archived.length})\n\n`;
+      archived.forEach(idea => {
+        markdown += `- ${idea.text} _(archived ${new Date(idea.archivedAt).toLocaleDateString()})_\n`;
+      });
+    }
+
+    downloadFile(markdown, 'mindmosaic-export.md', 'text/markdown');
+  };
+
+  const exportToJSON = () => {
+    const exportData = {
+      version: "1.0",
+      exportDate: new Date().toISOString(),
+      ideas,
+      archived,
+      stats: {
+        total: ideas.length,
+        completed: ideas.filter(i => i.completed).length,
+        archived: archived.length
+      }
+    };
+    downloadFile(JSON.stringify(exportData, null, 2), 'mindmosaic-backup.json', 'application/json');
+  };
+
+  const exportToObsidian = () => {
+    let markdown = `# 🧠 MindMosaic Vault\n\n`;
+    
+    ideas.forEach(idea => {
+      markdown += `## ${idea.text}\n\n`;
+      markdown += `**Category:** #${idea.category.replace(/\s+/g, '-')}\n`;
+      markdown += `**Status:** ${idea.completed ? '✅ Completed' : '⏳ In Progress'}\n`;
+      markdown += `**Created:** ${new Date(idea.createdAt).toLocaleDateString()}\n\n`;
+      
+      if (idea.aiComment) {
+        markdown += `### 🤖 AI Insight\n${idea.aiComment}\n\n`;
+      }
+      
+      if (idea.connections.length > 0) {
+        markdown += `### 🔗 Connected Ideas\n`;
+        idea.connections.forEach(id => {
+          const connected = ideas.find(i => i.id === id);
+          if (connected) {
+            markdown += `- [[${connected.text}]]\n`;
+          }
+        });
+        markdown += '\n';
+      }
+      
+      markdown += `---\n\n`;
+    });
+    
+    downloadFile(markdown, 'MindMosaic-Obsidian-Vault.md', 'text/markdown');
+  };
+
+  const downloadFile = (content, filename, type) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importFromJSON = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result);
+        if (data.ideas && Array.isArray(data.ideas)) {
+          const confirmed = window.confirm(
+            `Import ${data.ideas.length} ideas? This will replace your current data.`
+          );
+          if (confirmed) {
+            setIdeas(data.ideas);
+            if (data.archived) setArchived(data.archived);
+            alert('Import successful!');
+          }
+        }
+      } catch (error) {
+        alert('Invalid file format');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // AI Comment Generator
   const getAIComment = async (text) => {
     const lowerText = text.toLowerCase();
     
@@ -86,6 +320,13 @@ function App() {
     }
   };
 
+  // Continue to PART 3 for action functions...
+  // ============================================
+// PART 3: ACTION FUNCTIONS & HELPERS
+// Add these functions after Part 2 functions
+// ============================================
+
+  // Add New Idea with AI Analysis
   const analyzeAndAdd = async () => {
     if (!input.trim()) return;
 
@@ -97,6 +338,7 @@ function App() {
     let darkColor = "bg-gray-800 text-gray-200";
     const text = input.toLowerCase();
 
+    // Categorization logic
     if (text.includes("money") || text.includes("company") || text.includes("career") || text.includes("business")) {
         category = "Career";
         color = "bg-purple-100 text-purple-800";
@@ -128,6 +370,7 @@ function App() {
         size = "large";
     }
 
+    // Simulate AI thinking time
     await new Promise(resolve => setTimeout(resolve, 800));
     const aiResponse = await getAIComment(input);
 
@@ -157,6 +400,7 @@ function App() {
     }
   };
 
+  // Idea Management Functions
   const toggleComplete = (id) => {
     setIdeas(ideas.map(idea => 
       idea.id === id ? { ...idea, completed: !idea.completed } : idea
@@ -173,6 +417,7 @@ function App() {
     setIdeas(ideas.filter(i => i.id !== id));
   };
 
+  // Connection Functions
   const startLinking = (id) => {
     setLinkingMode(true);
     setLinkingFrom(id);
@@ -200,6 +445,7 @@ function App() {
     return ideas.filter(i => idea.connections.includes(i.id));
   };
 
+  // Filter and Search
   const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = idea.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          idea.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -207,6 +453,7 @@ function App() {
     return matchesSearch && matchesFilter;
   });
 
+  // Stats Calculation
   const categories = [...new Set(ideas.map(i => i.category))];
   
   const stats = {
@@ -219,6 +466,7 @@ function App() {
     , categories[0] || "None")
   };
 
+  // Theme Variables
   const isDark = theme === "dark";
   const bgClass = isDark ? "bg-slate-900" : "bg-gradient-to-br from-slate-50 to-blue-50";
   const textClass = isDark ? "text-white" : "text-slate-800";
@@ -226,6 +474,7 @@ function App() {
   const inputBg = isDark ? "bg-slate-800 text-white" : "bg-white";
   const borderColor = isDark ? "border-slate-700" : "border-slate-200";
 
+  // Random Idea Feature
   const getRandomIdea = () => {
     if (ideas.length === 0) return;
     const randomIdea = ideas[Math.floor(Math.random() * ideas.length)];
@@ -233,24 +482,108 @@ function App() {
     document.getElementById('search-input')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Now go to PART 4 for the JSX render (return statement)
+  // ============================================
+// PART 4: JSX RENDER (THE UI)
+// Add this return statement after all the functions from Part 3
+// Then close the App function and add export
+// ============================================
+
   return (
     <div className={`min-h-screen p-4 md:p-12 font-sans ${textClass} ${bgClass} transition-colors duration-300`}>
+      {/* Header */}
       <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
             Mind<span className="text-indigo-600">Mosaic</span>
           </h1>
           <p className={`${isDark ? "text-slate-400" : "text-slate-500"} mt-2`}>
-            Organize your chaos with AI insights
+            Your personal knowledge vault with AI insights
           </p>
         </div>
         
+        {/* Action Buttons */}
         <div className="flex gap-3 items-center flex-wrap">
           <button
             onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             className={`p-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+            title="Toggle theme"
           >
             {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+
+          {/* Export Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className={`px-4 py-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+            >
+              <Download size={18} />
+              <span className="hidden md:inline">Export</span>
+            </button>
+            
+            {showExportMenu && (
+              <div className={`absolute right-0 mt-2 w-56 ${cardBg} rounded-xl shadow-2xl p-2 z-50 ${borderColor} border`}>
+                <button
+                  onClick={() => { exportToMarkdown(); setShowExportMenu(false); }}
+                  className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3`}
+                >
+                  <FileText size={16} />
+                  <div>
+                    <div className="font-semibold">Markdown</div>
+                    <div className="text-xs opacity-70">Readable format</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { exportToObsidian(); setShowExportMenu(false); }}
+                  className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3`}
+                >
+                  <Network size={16} />
+                  <div>
+                    <div className="font-semibold">Obsidian Vault</div>
+                    <div className="text-xs opacity-70">With [[links]]</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { exportToJSON(); setShowExportMenu(false); }}
+                  className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3`}
+                >
+                  <Database size={16} />
+                  <div>
+                    <div className="font-semibold">JSON Backup</div>
+                    <div className="text-xs opacity-70">Full data export</div>
+                  </div>
+                </button>
+                <label className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3 cursor-pointer`}>
+                  <Upload size={16} />
+                  <div>
+                    <div className="font-semibold">Import JSON</div>
+                    <div className="text-xs opacity-70">Restore backup</div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={importFromJSON}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setCloudSyncEnabled(!cloudSyncEnabled)}
+            className={`px-4 py-3 rounded-xl ${cloudSyncEnabled ? "bg-indigo-600 text-white" : cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 relative`}
+            title={cloudSyncEnabled ? "Cloud sync enabled" : "Enable cloud sync"}
+          >
+            <Share2 size={18} />
+            <span className="hidden md:inline">Cloud</span>
+            {syncStatus === "syncing" && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+            )}
+            {syncStatus === "synced" && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+            )}
           </button>
           
           <button
@@ -279,6 +612,7 @@ function App() {
         </div>
       </header>
 
+      {/* Stats Dashboard */}
       <div className="max-w-7xl mx-auto mb-8 grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className={`${cardBg} p-4 rounded-xl shadow-md`}>
           <div className={`text-2xl font-bold ${isDark ? "text-indigo-400" : "text-indigo-600"}`}>{stats.total}</div>
@@ -302,6 +636,7 @@ function App() {
         </div>
       </div>
 
+      {/* Input Section */}
       <div className="max-w-4xl mx-auto mb-8">
         <div className="relative group">
           <div className={`absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur ${isDark ? "opacity-50" : "opacity-25"} group-hover:opacity-75 transition duration-500`}></div>
@@ -334,6 +669,7 @@ function App() {
         </div>
       </div>
 
+      {/* Search and Filter */}
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
@@ -374,6 +710,7 @@ function App() {
         </div>
       </div>
 
+      {/* Linking Mode Banner */}
       {linkingMode && (
         <div className="max-w-7xl mx-auto mb-4">
           <div className="bg-indigo-600 text-white p-4 rounded-xl flex justify-between items-center">
@@ -391,6 +728,7 @@ function App() {
         </div>
       )}
 
+      {/* Ideas Grid/List */}
       <div className={`max-w-7xl mx-auto ${viewMode === "mosaic" ? "grid grid-cols-1 md:grid-cols-4 auto-rows-[200px] gap-4" : "space-y-4"}`}>
         {filteredIdeas.map((idea) => {
           const connected = getConnectedIdeas(idea.id);
@@ -408,6 +746,7 @@ function App() {
                 ${idea.completed ? 'opacity-60' : ''}
               `}
             >
+              {/* Card Header */}
               <div className="flex justify-between items-start">
                 <span className="text-xs font-bold uppercase tracking-wider opacity-60 bg-white/50 px-2 py-1 rounded-md">
                   {idea.category}
@@ -458,6 +797,7 @@ function App() {
                 </div>
               </div>
               
+              {/* Card Content */}
               <div>
                 <h3 className={`font-bold mt-4 break-words ${idea.completed ? 'line-through' : ''} ${idea.size === 'large' ? 'text-3xl' : 'text-xl'}`}>
                   {idea.text}
@@ -483,6 +823,7 @@ function App() {
                 )}
               </div>
 
+              {/* Progress Bar for Large Ideas */}
               {idea.size === 'large' && !idea.completed && (
                 <div className="mt-4">
                   <div className="h-2 w-full bg-black/5 rounded-full overflow-hidden">
@@ -495,6 +836,7 @@ function App() {
         })}
       </div>
 
+      {/* Empty State */}
       {filteredIdeas.length === 0 && (
         <div className="max-w-7xl mx-auto text-center py-20">
           <div className={`text-6xl mb-4 ${isDark ? 'opacity-20' : 'opacity-10'}`}>🤔</div>
@@ -508,3 +850,4 @@ function App() {
 }
 
 export default App;
+}
