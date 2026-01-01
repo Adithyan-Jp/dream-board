@@ -486,11 +486,11 @@ Generated: ${new Date().toLocaleString()}
   // NOW GO TO PART 4 for the return statement - DO NOT ADD ANY CLOSING BRACES HERE!
   // ============================================
   // ============================================
+  // ============================================
 // PART 4: JSX RENDER (THE UI)
 // Paste this DIRECTLY after Part 3
 // This includes the return statement AND closes the App function properly
 // ============================================
-
   return (
     <div className={`min-h-screen p-4 md:p-12 font-sans ${textClass} ${bgClass} transition-colors duration-300`}>
       {/* Header */}
@@ -503,17 +503,16 @@ Generated: ${new Date().toLocaleString()}
             Your personal knowledge vault with AI insights
           </p>
         </div>
-        
+       
         {/* Action Buttons */}
         <div className="flex gap-3 items-center flex-wrap">
           <button
             onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-            className={`p-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+            className={`px-3 py-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
             title="Toggle theme"
           >
             {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
           </button>
-
           {/* Export Menu */}
           <div className="relative">
             <button
@@ -523,9 +522,9 @@ Generated: ${new Date().toLocaleString()}
               <Download size={18} />
               <span className="hidden md:inline">Export</span>
             </button>
-            
+           
             {showExportMenu && (
-              <div className={`absolute right-0 mt-2 w-56 ${cardBg} rounded-xl shadow-2xl p-2 z-50 ${borderColor} border`}>
+              <div className={`absolute right-0 mt-2 w-56 ${cardBg} rounded-xl shadow-2xl p-2 z-50 ${borderColor} border md:right-0`}>
                 <button
                   onClick={() => { exportToMarkdown(); setShowExportMenu(false); }}
                   className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3`}
@@ -572,7 +571,6 @@ Generated: ${new Date().toLocaleString()}
               </div>
             )}
           </div>
-
           <button
             onClick={() => setCloudSyncEnabled(!cloudSyncEnabled)}
             className={`px-4 py-3 rounded-xl ${cloudSyncEnabled ? "bg-indigo-600 text-white" : cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 relative`}
@@ -586,8 +584,11 @@ Generated: ${new Date().toLocaleString()}
             {syncStatus === "synced" && (
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
             )}
+            {syncStatus === "error" && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            )}
           </button>
-          
+         
           <button
             onClick={getRandomIdea}
             className={`px-4 py-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
@@ -595,7 +596,6 @@ Generated: ${new Date().toLocaleString()}
             <Sparkles size={18} />
             <span className="hidden md:inline">Random</span>
           </button>
-
           <button
             onClick={() => setShowAIComments(!showAIComments)}
             className={`px-4 py-3 rounded-xl ${showAIComments ? "bg-indigo-600 text-white" : cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2`}
@@ -603,7 +603,6 @@ Generated: ${new Date().toLocaleString()}
             <MessageSquare size={18} />
             <span className="hidden md:inline">AI</span>
           </button>
-
           <button
             onClick={() => setViewMode(viewMode === "mosaic" ? "list" : "mosaic")}
             className={`px-4 py-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
@@ -613,7 +612,6 @@ Generated: ${new Date().toLocaleString()}
           </button>
         </div>
       </header>
-
       {/* Stats Dashboard */}
       <div className="max-w-7xl mx-auto mb-8 grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className={`${cardBg} p-4 rounded-xl shadow-md`}>
@@ -637,7 +635,6 @@ Generated: ${new Date().toLocaleString()}
           <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>Top Category</div>
         </div>
       </div>
-
       {/* Input Section */}
       <div className="max-w-4xl mx-auto mb-8">
         <div className="relative group">
@@ -670,10 +667,10 @@ Generated: ${new Date().toLocaleString()}
           </div>
         </div>
       </div>
-
       {/* Search and Filter */}
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
+          <label htmlFor="search-input" className="sr-only">Search ideas</label>
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
           <input
             id="search-input"
@@ -684,34 +681,33 @@ Generated: ${new Date().toLocaleString()}
             className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} ${borderColor} border shadow-md focus:ring-2 focus:ring-indigo-500 outline-none`}
           />
         </div>
-        
+       
         <div className="flex gap-2 overflow-x-auto pb-2">
           <button
             onClick={() => setFilterCategory("all")}
             className={`px-4 py-3 rounded-xl whitespace-nowrap transition ${
-              filterCategory === "all" 
-                ? "bg-indigo-600 text-white shadow-lg" 
+              filterCategory === "all"
+                ? "bg-indigo-600 text-white shadow-lg"
                 : `${cardBg} ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`
             }`}
           >
             All
           </button>
-          {categories.map(cat => (
+          {categories.length > 0 ? categories.map(cat => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
               className={`px-4 py-3 rounded-xl whitespace-nowrap transition ${
-                filterCategory === cat 
-                  ? "bg-indigo-600 text-white shadow-lg" 
+                filterCategory === cat
+                  ? "bg-indigo-600 text-white shadow-lg"
                   : `${cardBg} ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`
               }`}
             >
               {cat}
             </button>
-          ))}
+          )) : null}
         </div>
       </div>
-
       {/* Linking Mode Banner */}
       {linkingMode && (
         <div className="max-w-7xl mx-auto mb-4">
@@ -729,20 +725,19 @@ Generated: ${new Date().toLocaleString()}
           </div>
         </div>
       )}
-
       {/* Ideas Grid/List */}
       <div className={`max-w-7xl mx-auto ${viewMode === "mosaic" ? "grid grid-cols-1 md:grid-cols-4 auto-rows-[200px] gap-4" : "space-y-4"}`}>
         {filteredIdeas.map((idea) => {
           const connected = getConnectedIdeas(idea.id);
           const currentColor = isDark ? idea.darkColor : idea.color;
-          
+         
           return (
             <div
               key={idea.id}
               onClick={() => linkingMode && linkIdeas(idea.id)}
               className={`
                 ${viewMode === "mosaic" ? `${idea.size === 'large' ? 'md:col-span-2 md:row-span-2' : ''} ${idea.size === 'wide' ? 'md:col-span-2' : ''} ${idea.size === 'tall' ? 'md:row-span-2' : ''}` : ''}
-                ${currentColor} p-6 rounded-3xl relative group hover:scale-[1.02] transition-all duration-300 shadow-md hover:shadow-2xl flex flex-col justify-between
+                ${currentColor} p-6 rounded-3xl relative group hover:scale-[1.02] transition-all duration-300 shadow-md hover:shadow-2xl flex flex-col justify-between overflow-hidden
                 ${linkingMode && linkingFrom === idea.id ? 'ring-4 ring-indigo-600' : ''}
                 ${linkingMode ? 'cursor-pointer' : ''}
                 ${idea.completed ? 'opacity-60' : ''}
@@ -798,22 +793,21 @@ Generated: ${new Date().toLocaleString()}
                   </button>
                 </div>
               </div>
-              
+             
               {/* Card Content */}
-              <div>
-                <h3 className={`font-bold mt-4 break-words ${idea.completed ? 'line-through' : ''} ${idea.size === 'large' ? 'text-3xl' : 'text-xl'}`}>
+              <div className="flex-1">
+                <h3 className={`font-bold mt-4 break-words line-clamp-3 ${idea.completed ? 'line-through' : ''} ${idea.size === 'large' ? 'text-3xl' : 'text-xl'}`}>
                   {idea.text}
                 </h3>
-                
+               
                 {showAIComments && idea.aiComment && (
-                  <div className="mt-3 bg-black/10 backdrop-blur-sm p-3 rounded-xl text-sm italic">
+                  <div className={`mt-3 backdrop-blur-sm p-3 rounded-xl text-sm italic ${isDark ? 'bg-slate-800/50' : 'bg-slate-100/50'}`}>
                     <div className="flex items-start gap-2">
                       <Sparkles size={16} className="flex-shrink-0 mt-0.5" />
                       <span>{idea.aiComment}</span>
                     </div>
                   </div>
                 )}
-
                 {connected.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {connected.map(c => (
@@ -824,12 +818,11 @@ Generated: ${new Date().toLocaleString()}
                   </div>
                 )}
               </div>
-
               {/* Progress Bar for Large Ideas */}
               {idea.size === 'large' && !idea.completed && (
                 <div className="mt-4">
                   <div className="h-2 w-full bg-black/5 rounded-full overflow-hidden">
-                    <div className="h-full w-1/3 bg-current opacity-50 rounded-full"></div>
+                    <div className={`h-full w-[${idea.progress || 33}%] bg-current opacity-50 rounded-full`}></div>
                   </div>
                 </div>
               )}
@@ -837,7 +830,6 @@ Generated: ${new Date().toLocaleString()}
           );
         })}
       </div>
-
       {/* Empty State */}
       {filteredIdeas.length === 0 && (
         <div className="max-w-7xl mx-auto text-center py-20">
@@ -850,5 +842,4 @@ Generated: ${new Date().toLocaleString()}
     </div>
   );
 }
-
 export default App;
