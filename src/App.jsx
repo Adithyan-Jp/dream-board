@@ -1,8 +1,3 @@
-// ============================================
-// PART 1: IMPORTS, INITIAL DATA, AND STATE
-// Copy this entire part into your App.jsx
-// ============================================
-
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Trash2, Plus, Moon, Sun, Archive, Link2, Search, TrendingUp, Check, MessageSquare, Download, Upload, Share2, FileText, Database, Network } from 'lucide-react';
 
@@ -99,13 +94,6 @@ function App() {
       loadFromCloud();
     }
   }, [cloudSyncEnabled]);
-
-  // Continue to PART 2 for functions...
-  // ============================================
-// PART 2: CORE FUNCTIONS
-// Add these functions inside your App component (after useEffect hooks from Part 1)
-// ============================================
-
   // Cloud Sync Functions
   const syncToCloud = async () => {
     if (!window.storage) return;
@@ -319,13 +307,6 @@ Generated: ${new Date().toLocaleString()}
       return { comment: motivational[Math.floor(Math.random() * motivational.length)], sentiment: "neutral" };
     }
   };
-
-  // Continue to PART 3 for action functions...
-  // ============================================
-// PART 3: ACTION FUNCTIONS & HELPERS
-// Add these functions after Part 2 functions
-// ============================================
-
   // Add New Idea with AI Analysis
   const analyzeAndAdd = async () => {
     if (!input.trim()) return;
@@ -481,14 +462,6 @@ Generated: ${new Date().toLocaleString()}
     setSearchQuery(randomIdea.text);
     document.getElementById('search-input')?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  // Now go to PART 4 for the JSX render (return statement)
-  // ============================================
-// PART 4: JSX RENDER (THE UI)
-// Add this return statement after all the functions from Part 3
-// Then close the App function and add export
-// ============================================
-
   return (
     <div className={`min-h-screen p-4 md:p-12 font-sans ${textClass} ${bgClass} transition-colors duration-300`}>
       {/* Header */}
