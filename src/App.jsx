@@ -1,475 +1,964 @@
-// ============================================
-// COMPLETE APP.JSX - WITH REAL AI & PROGRESS TRACKING
-// ============================================
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Sparkles, Trash2, Plus, Moon, Sun, Archive, Link2, Search, 
-  TrendingUp, Check, MessageSquare, Download, Upload, Share2, 
-  FileText, Database, Network, Edit2, Settings, ChevronDown, ChevronUp, PlayCircle 
-} from 'lucide-react';
-
-// ============================================
-// 1. HELPERS & CONFIG
-// ============================================
-
-const SYSTEM_PROMPT = `
-You are an expert productivity coach and project manager. 
-Analyze the user's goal. Return ONLY a valid JSON object (no markdown) with this structure:
-{
-  "comment": "A short, witty, or insightful specific comment about this goal.",
-  "sentiment": "positive" | "neutral" | "urgent" | "skeptical",
-  "category": "Career" | "Health" | "Learning" | "Creative" | "Finance" | "Other",
-  "milestones": [
-    "Step 1 text",
-    "Step 2 text",
-    "Step 3 text"
-  ]
-}
-Generate 3 to 5 concrete, actionable milestones to achieve the goal.
-`;
+// Added 'Settings' to imports
+import { Sparkles, Trash2, Plus, Moon, Sun, Archive, Link2, Search, TrendingUp, Check, MessageSquare, Download, Upload, Share2, FileText, Database, Network, Edit2, Settings } from 'lucide-react';
 
 const INITIAL_IDEAS = [
   {
     id: 1,
     text: "Build a Billion Dollar Company",
-    category: "Career",
+    category: "Big Dream",
+    size: "large",
+    color: "bg-indigo-100 text-indigo-800",
+    darkColor: "bg-indigo-900 text-indigo-200",
     aiComment: "Ambitious! Start with solving one real problem first. 🚀",
     sentiment: "excited",
     completed: false,
     connections: [],
-    createdAt: Date.now(),
-    milestones: [
-      { id: 'm1', text: "Identify a problem worth solving", done: true },
-      { id: 'm2', text: "Build an MVP (Minimum Viable Product)", done: false },
-      { id: 'm3', text: "Get first 100 paying customers", done: false }
-    ]
-  }
+    createdAt: Date.now()
+  },
+  {
+    id: 2,
+    text: "Drink 3L Water",
+    category: "Health",
+    size: "small",
+    color: "bg-teal-100 text-teal-800",
+    darkColor: "bg-teal-900 text-teal-200",
+    aiComment: "Simple and powerful. Your kidneys will thank you! 💧",
+    sentiment: "positive",
+    completed: false,
+    connections: [],
+    createdAt: Date.now() - 86400000
+  },
+  {
+    id: 3,
+    text: "Master React & APIs",
+    category: "Learning",
+    size: "wide",
+    color: "bg-blue-100 text-blue-800",
+    darkColor: "bg-blue-900 text-blue-200",
+    aiComment: "This pairs perfectly with your billion dollar dream. Keep building! 💪",
+    sentiment: "motivated",
+    connections: [1],
+    createdAt: Date.now() - 172800000
+  },
 ];
 
-// ============================================
-// 2. COMPONENTS
-// ============================================
-
-function IdeaCard({ 
-  idea, ideas, isDark, showAIComments, linkingMode, linkingFrom, 
-  onToggleComplete, onArchive, onDelete, onStartLinking, 
-  onLinkIdeas, onEdit, onToggleMilestone, onGeneratePlan, apiKey 
-}) {
+function IdeaCard({ idea, ideas, isDark, showAIComments, linkingMode, linkingFrom, onToggleComplete, onArchive, onDelete, onStartLinking, onLinkIdeas, onEdit }) {
   const connected = ideas.filter(i => idea.connections.includes(i.id));
+  const currentColor = isDark ? idea.darkColor : idea.color;
   const [isEditing, setIsEditing] = useState(false);
-  const [showPlan, setShowPlan] = useState(false);
   const [editText, setEditText] = useState(idea.text);
-  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
-  // Calculate Progress
-  const totalMilestones = idea.milestones?.length || 0;
-  const completedMilestones = idea.milestones?.filter(m => m.done).length || 0;
-  const progressPercent = totalMilestones === 0 
-    ? (idea.completed ? 100 : 0) 
-    : Math.round((completedMilestones / totalMilestones) * 100);
-
-  // Color logic based on category
-  const getColors = (cat) => {
-    const map = {
-      'Career': isDark ? "bg-purple-900/40 border-purple-700 text-purple-100" : "bg-purple-50 border-purple-200 text-purple-900",
-      'Health': isDark ? "bg-emerald-900/40 border-emerald-700 text-emerald-100" : "bg-emerald-50 border-emerald-200 text-emerald-900",
-      'Finance': isDark ? "bg-yellow-900/40 border-yellow-700 text-yellow-100" : "bg-yellow-50 border-yellow-200 text-yellow-900",
-      'Learning': isDark ? "bg-blue-900/40 border-blue-700 text-blue-100" : "bg-blue-50 border-blue-200 text-blue-900",
-      'Urgent': isDark ? "bg-red-900/40 border-red-700 text-red-100" : "bg-red-50 border-red-200 text-red-900",
-    };
-    return map[cat] || (isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900");
-  };
-
-  const cardStyle = getColors(idea.category);
-
-  const handleEdit = () => {
-    if (isEditing && editText.trim()) onEdit(idea.id, editText);
-    setIsEditing(!isEditing);
-  };
-
-  const handleGenerateClick = async (e) => {
-    e.stopPropagation();
-    if (!apiKey) {
-      alert("Please add your API Key in Settings first!");
-      return;
+  const handleEdit = useCallback(() => {
+    if (isEditing && editText.trim()) {
+      onEdit(idea.id, editText);
     }
-    setIsLoadingPlan(true);
-    await onGeneratePlan(idea.id, idea.text);
-    setIsLoadingPlan(false);
-    setShowPlan(true);
+    setIsEditing(!isEditing);
+  }, [isEditing, editText, idea.id, onEdit]);
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleEdit();
+    }
   };
 
   return (
     <div
       onClick={() => linkingMode && onLinkIdeas(idea.id)}
       className={`
-        ${cardStyle} border p-5 rounded-2xl relative group transition-all duration-300 flex flex-col justify-between
-        ${linkingMode && linkingFrom === idea.id ? 'ring-4 ring-indigo-500 scale-105' : 'hover:shadow-xl hover:-translate-y-1'}
-        ${linkingMode ? 'cursor-pointer' : ''}
-        ${idea.completed ? 'opacity-70 grayscale-[0.5]' : ''}
+        ${currentColor} p-6 rounded-3xl relative group hover:scale-[1.02] transition-all duration-300 shadow-md hover:shadow-2xl flex flex-col justify-between
+        ${linkingMode && linkingFrom === idea.id ? 'ring-4 ring-indigo-600' : ''}
+        ${linkingMode ? 'cursor-pointer' : 'cursor-default'}
+        ${idea.completed ? 'opacity-60' : ''}
       `}
+      role="article"
+      aria-labelledby={`idea-${idea.id}-title`}
     >
-      {/* Header */}
-      <div className="flex justify-between items-start mb-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-70 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded">
+      {/* Card Header */}
+      <div className="flex justify-between items-start">
+        <span className="text-xs font-bold uppercase tracking-wider opacity-60 bg-white/50 px-2 py-1 rounded-md">
           {idea.category}
         </span>
-        
-        {/* Actions */}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="p-1.5 hover:bg-black/10 rounded-full" title="Edit"><Edit2 size={14} /></button>
-          <button onClick={(e) => { e.stopPropagation(); onStartLinking(idea.id); }} className="p-1.5 hover:bg-blue-500 hover:text-white rounded-full" title="Link"><Link2 size={14} /></button>
-          <button onClick={(e) => { e.stopPropagation(); if(confirm('Archive?')) onArchive(idea.id); }} className="p-1.5 hover:bg-orange-500 hover:text-white rounded-full" title="Archive"><Archive size={14} /></button>
-          <button onClick={(e) => { e.stopPropagation(); if(confirm('Delete?')) onDelete(idea.id); }} className="p-1.5 hover:bg-red-500 hover:text-white rounded-full" title="Delete"><Trash2 size={14} /></button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1">
-        {isEditing ? (
-          <input
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onBlur={handleEdit}
-            onKeyDown={(e) => e.key === 'Enter' && handleEdit()}
-            className="w-full bg-transparent border-b border-current outline-none text-lg font-bold"
-            autoFocus
-          />
-        ) : (
-          <h3 className={`text-xl font-bold mb-2 leading-tight ${idea.completed ? 'line-through' : ''}`}>
-            {idea.text}
-          </h3>
-        )}
-
-        {/* AI Insight */}
-        {showAIComments && idea.aiComment && (
-          <div className="text-sm opacity-80 italic mb-4 flex items-start gap-2 bg-black/5 dark:bg-white/5 p-2 rounded-lg">
-            <Sparkles size={14} className="mt-1 shrink-0 text-indigo-500" />
-            {idea.aiComment}
-          </div>
-        )}
-
-        {/* PROGRESS BAR */}
-        <div className="mt-4">
-          <div className="flex justify-between text-xs font-semibold mb-1 opacity-70">
-            <span>Progress</span>
-            <span>{progressPercent}%</span>
-          </div>
-          <div className="w-full h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-500 rounded-full ${progressPercent === 100 ? 'bg-green-500' : 'bg-indigo-500'}`} 
-              style={{ width: `${progressPercent}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Milestones / Plan Section */}
-        <div className="mt-4 border-t border-black/10 dark:border-white/10 pt-3">
-          <button 
-            onClick={(e) => { e.stopPropagation(); setShowPlan(!showPlan); }}
-            className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide opacity-60 hover:opacity-100 transition"
-          >
-            {showPlan ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-            {idea.milestones?.length > 0 ? 'Action Plan' : 'No Plan Yet'}
-          </button>
-
-          {showPlan && (
-            <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-2">
-              {idea.milestones && idea.milestones.length > 0 ? (
-                idea.milestones.map(m => (
-                  <div key={m.id} className="flex items-start gap-2 text-sm group/item">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onToggleMilestone(idea.id, m.id); }}
-                      className={`mt-0.5 w-4 h-4 border rounded flex items-center justify-center transition ${m.done ? 'bg-green-500 border-green-500 text-white' : 'border-current opacity-40 hover:opacity-100'}`}
-                    >
-                      {m.done && <Check size={10} />}
-                    </button>
-                    <span className={`${m.done ? 'line-through opacity-50' : ''}`}>{m.text}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-2">
-                   <button 
-                    onClick={handleGenerateClick}
-                    disabled={isLoadingPlan}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2 mx-auto transition"
-                  >
-                    {isLoadingPlan ? <div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full"/> : <Sparkles size={12}/>}
-                    Generate AI Action Plan
-                  </button>
-                </div>
-              )}
+        <div className="flex gap-2">
+          {connected.length > 0 && (
+            <div className="bg-white/80 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1" aria-label={`${connected.length} connected ideas`}>
+              <Link2 size={12} />
+              {connected.length}
             </div>
           )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete(idea.id);
+            }}
+            className={`opacity-0 group-hover:opacity-100 bg-white/80 p-2 rounded-full transition ${idea.completed ? 'bg-green-500 text-white opacity-100' : 'hover:bg-green-500 hover:text-white'}`}
+            aria-label={idea.completed ? 'Mark incomplete' : 'Mark complete'}
+          >
+            <Check size={16} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
+            className="opacity-0 group-hover:opacity-100 bg-white/80 p-2 rounded-full hover:bg-yellow-500 hover:text-white transition"
+            aria-label="Edit idea"
+          >
+            <Edit2 size={16} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartLinking(idea.id);
+            }}
+            className="opacity-0 group-hover:opacity-100 bg-white/80 p-2 rounded-full hover:bg-blue-500 hover:text-white transition"
+            aria-label="Link to another idea"
+          >
+            <Link2 size={16} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm('Archive this idea? It can be restored from exports.')) {
+                onArchive(idea.id);
+              }
+            }}
+            className="opacity-0 group-hover:opacity-100 bg-white/80 p-2 rounded-full hover:bg-orange-500 hover:text-white transition"
+            aria-label="Archive idea"
+          >
+            <Archive size={16} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm('Delete this idea permanently?')) {
+                onDelete(idea.id);
+              }
+            }}
+            className="opacity-0 group-hover:opacity-100 bg-white/80 p-2 rounded-full hover:bg-red-500 hover:text-white transition"
+            aria-label="Delete idea"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       </div>
+
+      {/* Card Content */}
+      <div className="flex-1">
+        <div
+          onDoubleClick={() => setIsEditing(true)}
+          className={`font-bold mt-4 break-words ${idea.completed ? 'line-through' : ''} ${idea.size === 'large' ? 'text-3xl' : 'text-xl'}`}
+        >
+          {isEditing ? (
+            <input
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={handleKeyPress}
+              onBlur={handleEdit}
+              className="w-full bg-transparent border-none outline-none text-inherit"
+              autoFocus
+              aria-label="Edit idea text"
+            />
+          ) : (
+            <h3 id={`idea-${idea.id}-title`}>{idea.text}</h3>
+          )}
+        </div>
+
+        {showAIComments && idea.aiComment && (
+          <div className="mt-3 bg-black/10 backdrop-blur-sm p-3 rounded-xl text-sm italic" aria-label="AI comment">
+            <div className="flex items-start gap-2">
+              <Sparkles size={16} className="flex-shrink-0 mt-0.5" />
+              <span>{idea.aiComment}</span>
+            </div>
+          </div>
+        )}
+        {connected.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Connected ideas">
+            {connected.map(c => (
+              <div key={c.id} className="text-xs bg-white/30 px-2 py-1 rounded-full">
+                🔗 {c.text.slice(0, 20)}{c.text.length > 20 ? '...' : ''}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Progress Bar for Large Ideas */}
+      {idea.size === 'large' && !idea.completed && (
+        <div className="mt-4">
+          <div className="h-2 w-full bg-black/5 rounded-full overflow-hidden">
+            <div className="h-full w-1/3 bg-current opacity-50 rounded-full"></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ============================================
-// 3. MAIN APP
-// ============================================
-
 function App() {
-  // --- STATE ---
-  const [ideas, setIdeas] = useState(() => JSON.parse(localStorage.getItem("mindMosaicData")) || INITIAL_IDEAS);
-  const [archived, setArchived] = useState(() => JSON.parse(localStorage.getItem("mindMosaicArchived")) || []);
-  const [theme, setTheme] = useState(() => localStorage.getItem("mindMosaicTheme") || "light");
+  // Core State
+  const [ideas, setIdeas] = useState(() => {
+    const saved = localStorage.getItem("mindMosaicData");
+    return saved ? JSON.parse(saved) : INITIAL_IDEAS;
+  });
+
+  const [archived, setArchived] = useState(() => {
+    const saved = localStorage.getItem("mindMosaicArchived");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [input, setInput] = useState("");
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("mindMosaicTheme");
+    return saved || "light";
+  });
+
+  // --- NEW: GEMINI API STATE ---
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("mindMosaicApiKey") || "");
   const [showSettings, setShowSettings] = useState(false);
-  const [input, setInput] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  
+  // -----------------------------
+
   // UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [viewMode, setViewMode] = useState("mosaic"); // mosaic | list
+  const [viewMode, setViewMode] = useState("mosaic");
   const [linkingMode, setLinkingMode] = useState(false);
   const [linkingFrom, setLinkingFrom] = useState(null);
   const [showAIComments, setShowAIComments] = useState(true);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle");
 
-  // --- EFFECTS ---
-  useEffect(() => { localStorage.setItem("mindMosaicData", JSON.stringify(ideas)); }, [ideas]);
-  useEffect(() => { localStorage.setItem("mindMosaicArchived", JSON.stringify(archived)); }, [archived]);
-  useEffect(() => { localStorage.setItem("mindMosaicTheme", theme); document.documentElement.setAttribute('data-theme', theme); }, [theme]);
-  useEffect(() => { localStorage.setItem("mindMosaicApiKey", apiKey); }, [apiKey]);
+  // Persist data to localStorage
+  useEffect(() => {
+    localStorage.setItem("mindMosaicData", JSON.stringify(ideas));
+    if (cloudSyncEnabled) {
+      syncToCloud();
+    }
+  }, [ideas, cloudSyncEnabled]);
 
-  const isDark = theme === "dark";
+  useEffect(() => {
+    localStorage.setItem("mindMosaicArchived", JSON.stringify(archived));
+  }, [archived]);
 
-  // --- REAL AI ACTION ---
-  const callOpenAI = async (promptText) => {
-    if (!apiKey) throw new Error("No API Key");
-    
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo", // Cost effective
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Goal: ${promptText}` }
-        ],
-        temperature: 0.7
-      })
-    });
+  useEffect(() => {
+    localStorage.setItem("mindMosaicTheme", theme);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-    
-    // Parse the JSON string from AI
+  // --- NEW: PERSIST API KEY ---
+  useEffect(() => {
+    localStorage.setItem("mindMosaicApiKey", apiKey);
+  }, [apiKey]);
+  // ---------------------------
+
+  // Load from cloud when sync is enabled
+  useEffect(() => {
+    if (cloudSyncEnabled && window.storage) {
+      loadFromCloud();
+    }
+  }, [cloudSyncEnabled]);
+
+  // Cloud Sync Functions
+  const syncToCloud = async () => {
+    if (!window.storage) return;
+
+    setSyncStatus("syncing");
     try {
-      return JSON.parse(data.choices[0].message.content);
-    } catch (e) {
-      console.error("AI returned invalid JSON", data.choices[0].message.content);
-      return { 
-        comment: "AI response error. Try again.", 
-        category: "Other", 
-        milestones: ["Define the goal clearly"], 
-        sentiment: "neutral" 
-      };
+      await window.storage.set('mindmosaic-ideas', JSON.stringify(ideas), true);
+      await window.storage.set('mindmosaic-archived', JSON.stringify(archived), true);
+      setSyncStatus("synced");
+      setTimeout(() => setSyncStatus("idle"), 2000);
+    } catch (error) {
+      setSyncStatus("error");
+      // Silently handle; no alert to avoid UX disruption
     }
   };
 
-  // --- CORE ACTIONS ---
+  const loadFromCloud = async () => {
+    if (!window.storage) {
+      return; // Graceful skip
+    }
 
-  const addIdea = async () => {
-    if (!input.trim()) return;
-    setIsProcessing(true);
+    setSyncStatus("syncing");
+    try {
+      const [ideasResult, archivedResult] = await Promise.all([
+        window.storage.get('mindmosaic-ideas', true),
+        window.storage.get('mindmosaic-archived', true)
+      ]);
 
-    let aiData = {
-      comment: "Simulated comment (Add API Key for real AI)",
-      category: "Thought",
-      sentiment: "neutral",
-      milestones: []
+      if (ideasResult?.value) {
+        setIdeas(JSON.parse(ideasResult.value));
+      }
+      if (archivedResult?.value) {
+        setArchived(JSON.parse(archivedResult.value));
+      }
+
+      setSyncStatus("synced");
+      setTimeout(() => setSyncStatus("idle"), 2000);
+    } catch (error) {
+      setSyncStatus("idle");
+    }
+  };
+
+  // Export Functions
+  const exportToMarkdown = useCallback(() => {
+    let markdown = `# MindMosaic Export\nGenerated: ${new Date().toLocaleString()}\n---\n## Active Ideas (${ideas.length})\n`;
+    const groupedByCategory = ideas.reduce((acc, idea) => {
+      if (!acc[idea.category]) acc[idea.category] = [];
+      acc[idea.category].push(idea);
+      return acc;
+    }, {});
+
+    Object.entries(groupedByCategory).forEach(([category, categoryIdeas]) => {
+      markdown += `\n### ${category}\n\n`;
+      categoryIdeas.forEach(idea => {
+        const status = idea.completed ? '[x]' : '[ ]';
+        markdown += `${status} **${idea.text}**\n`;
+        if (idea.aiComment) {
+          markdown += ` > AI: ${idea.aiComment}\n`;
+        }
+        if (idea.connections.length > 0) {
+          const connectedTexts = idea.connections
+            .map(id => ideas.find(i => i.id === id)?.text)
+            .filter(Boolean)
+            .join(', ');
+          markdown += ` - Connected to: ${connectedTexts}\n`;
+        }
+        markdown += ` - Created: ${new Date(idea.createdAt).toLocaleDateString()}\n\n`;
+      });
+    });
+
+    if (archived.length > 0) {
+      markdown += `\n---\n\n## Archived Ideas (${archived.length})\n\n`;
+      archived.forEach(idea => {
+        markdown += `- ${idea.text} _(archived ${new Date(idea.archivedAt).toLocaleDateString()})_\n`;
+      });
+    }
+
+    downloadFile(markdown, 'mindmosaic-export.md', 'text/markdown');
+  }, [ideas, archived]);
+
+  const exportToJSON = useCallback(() => {
+    const exportData = {
+      version: "1.0",
+      exportDate: new Date().toISOString(),
+      ideas,
+      archived,
+      stats: {
+        total: ideas.length,
+        completed: ideas.filter(i => i.completed).length,
+        archived: archived.length
+      }
     };
+    downloadFile(JSON.stringify(exportData, null, 2), 'mindmosaic-backup.json', 'application/json');
+  }, [ideas, archived]);
 
+  const exportToObsidian = useCallback(() => {
+    // Note: For true multi-file, would need zip; here, single file with notes on linking
+    let markdown = `# 🧠 MindMosaic Obsidian Vault\n\n> Note: For full vault, split into separate .md files manually. Links use [[format]].\n\n`;
+    
+    ideas.forEach(idea => {
+      markdown += `## ${idea.text}\n\n`;
+      markdown += `**Category:** #${idea.category.replace(/\s+/g, '-')}\n`;
+      markdown += `**Status:** ${idea.completed ? '✅ Completed' : '⏳ In Progress'}\n`;
+      markdown += `**Created:** ${new Date(idea.createdAt).toLocaleDateString()}\n\n`;
+      
+      if (idea.aiComment) {
+        markdown += `### 🤖 AI Insight\n${idea.aiComment}\n\n`;
+      }
+      
+      if (idea.connections.length > 0) {
+        markdown += `### 🔗 Connected Ideas\n`;
+        idea.connections.forEach(id => {
+          const connected = ideas.find(i => i.id === id);
+          if (connected) {
+            markdown += `- [[${connected.text.replace(/\s+/g, '-')}]]\n`;
+          }
+        });
+        markdown += '\n';
+      }
+      
+      markdown += `---\n\n`;
+    });
+
+    downloadFile(markdown, 'MindMosaic-Obsidian-Vault.md', 'text/markdown');
+  }, [ideas]);
+
+  const downloadFile = useCallback((content, filename, type) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const importFromJSON = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result);
+        if (data.ideas && Array.isArray(data.ideas)) {
+          const confirmed = window.confirm(
+            `Import ${data.ideas.length} ideas? This will replace your current data.`
+          );
+          if (confirmed) {
+            setIdeas(data.ideas.map(idea => ({ ...idea, id: idea.id || Date.now() + Math.random() }))); // Ensure unique IDs
+            if (data.archived) setArchived(data.archived);
+            alert('Import successful!');
+          }
+        } else {
+          alert('Invalid file: No "ideas" array found.');
+        }
+      } catch (error) {
+        alert('Invalid JSON file format.');
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
+  // Enhanced AI Comment Generator
+  const getAIComment = useCallback(async (text) => {
+    const lowerText = text.toLowerCase();
+    
+    const roasts = [
+      "Bold move! But have you thought about step 1? 🤔",
+      "Dream big, but maybe start with breakfast first? 🍳",
+      "I love the enthusiasm, but let's be real here... 😅",
+      "That's... ambitious. Got a plan or just vibes? ✨",
+      "Okay, but what are you actually going to DO? 🎯",
+      "World domination? Start with your inbox. 📧"
+    ];
+    
+    const motivational = [
+      "Yes! This is the energy we need! 🔥",
+      "Love this! Small steps lead to big changes. 👣",
+      "You've got this! Consistency is key. 💪",
+      "Smart move. This will compound over time. 📈",
+      "Simple but powerful. I'm rooting for you! 🌟",
+      "One habit at a time—legendary! 🏆"
+    ];
+    
+    const analytical = [
+      "Interesting. What's your timeline on this? ⏰",
+      "Good thinking. Break this into smaller chunks. 🧩",
+      "This makes sense. Have you considered the obstacles? 🚧",
+      "Solid idea. Execution is everything. ⚡",
+      "I see the vision. Now make a roadmap. 🗺️",
+      "Metrics matter—how will you measure success? 📊"
+    ];
+
+    let comment, sentiment;
+    if (lowerText.includes("billion") || lowerText.includes("million") || lowerText.includes("famous") || lowerText.includes("richest")) {
+      comment = roasts[Math.floor(Math.random() * roasts.length)];
+      sentiment = "skeptical";
+    } else if (lowerText.includes("gym") || lowerText.includes("exercise") || lowerText.includes("run") || lowerText.includes("yoga")) {
+      comment = motivational[Math.floor(Math.random() * motivational.length)];
+      sentiment = "positive";
+    } else if (lowerText.includes("learn") || lowerText.includes("read") || lowerText.includes("skill") || lowerText.includes("code")) {
+      comment = analytical[Math.floor(Math.random() * analytical.length)];
+      sentiment = "motivated";
+    } else if (lowerText.includes("urgent") || lowerText.includes("deadline") || lowerText.includes("fix")) {
+      comment = "High priority detected—tackle this first! 🚨";
+      sentiment = "urgent";
+    } else if (text.length > 100) { // Longer threshold for "deep"
+      comment = "Profound reflection. Journal this deeper next time. 📖";
+      sentiment = "thoughtful";
+    } else {
+      comment = motivational[Math.floor(Math.random() * motivational.length)];
+      sentiment = "neutral";
+    }
+
+    // Simulate async delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { comment, sentiment };
+  }, []);
+
+  // --- NEW: GEMINI CALL FUNCTION ---
+  const callGemini = async (promptText) => {
+    if (!apiKey) throw new Error("No API Key");
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    
+    const prompt = `Analyze this user idea: "${promptText}". Return a JSON object with: 1. "comment" (witty/insightful feedback), 2. "sentiment" (positive/neutral/skeptical/urgent/motivated), 3. "category" (best fit category like Career, Health, etc). Return ONLY valid JSON.`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      const textResponse = data.candidates[0].content.parts[0].text;
+      // Extract JSON from potential markdown code blocks
+      const jsonStr = textResponse.replace(/```json|```/g, '').trim();
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("Gemini API Error", e);
+      return null;
+    }
+  };
+  // --------------------------------
+
+  // Add New Idea with AI Analysis (UPDATED)
+  const analyzeAndAdd = useCallback(async () => {
+    if (!input.trim()) return;
+    setAiAnalyzing(true);
+    
+    // Default logic (from your original code)
+    let size = "small";
+    let category = "Thought";
+    let color = "bg-gray-100 text-gray-800";
+    let darkColor = "bg-gray-800 text-gray-200";
+    const text = input.toLowerCase();
+
+    // Improved categorization with more options (from your original code)
+    if (text.includes("money") || text.includes("business") || text.includes("invest") || text.includes("salary")) {
+      category = "Career";
+      color = "bg-purple-100 text-purple-800";
+      darkColor = "bg-purple-900 text-purple-200";
+      size = "wide";
+    } else if (text.includes("health") || text.includes("diet") || text.includes("sleep") || text.includes("mental")) {
+      category = "Health";
+      color = "bg-green-100 text-green-800";
+      darkColor = "bg-green-900 text-green-200";
+    } else if (text.includes("learn") || text.includes("book") || text.includes("course") || text.includes("tutorial")) {
+      category = "Learning";
+      color = "bg-blue-100 text-blue-800";
+      darkColor = "bg-blue-900 text-blue-200";
+      size = "wide";
+    } else if (input.length > 100) {
+      size = "large";
+      category = "Deep Thought";
+      color = "bg-orange-100 text-orange-800";
+      darkColor = "bg-orange-900 text-orange-200";
+    } else if (text.includes("urgent") || text.includes("now") || text.includes("today")) {
+      category = "Urgent";
+      color = "bg-red-100 text-red-800";
+      darkColor = "bg-red-900 text-red-200";
+      size = "tall";
+    } else if (text.includes("dream") || text.includes("goal") || text.includes("future")) {
+      category = "Big Dream";
+      color = "bg-indigo-100 text-indigo-800";
+      darkColor = "bg-indigo-900 text-indigo-200";
+      size = "large";
+    }
+
+    let finalComment = "";
+    let finalSentiment = "";
+
+    // --- NEW: CHECK FOR API KEY ---
     if (apiKey) {
       try {
-        aiData = await callOpenAI(input);
+        const geminiData = await callGemini(input);
+        if (geminiData) {
+          finalComment = geminiData.comment;
+          finalSentiment = geminiData.sentiment;
+          if (geminiData.category) category = geminiData.category; // Override category if Gemini provides one
+        }
       } catch (err) {
-        alert("AI Error: " + err.message);
+        // Fallback to local logic if API fails
+        const aiResponse = await getAIComment(input);
+        finalComment = aiResponse.comment;
+        finalSentiment = aiResponse.sentiment;
       }
+    } else {
+      // Use existing mock logic
+      const aiResponse = await getAIComment(input);
+      finalComment = aiResponse.comment;
+      finalSentiment = aiResponse.sentiment;
     }
+    // ------------------------------
 
     const newIdea = {
       id: Date.now(),
       text: input,
-      category: aiData.category || "Thought",
-      aiComment: aiData.comment,
-      sentiment: aiData.sentiment,
-      milestones: aiData.milestones?.map((text, i) => ({ id: `m-${Date.now()}-${i}`, text, done: false })) || [],
+      category,
+      size,
+      color,
+      darkColor,
+      aiComment: finalComment,
+      sentiment: finalSentiment,
       completed: false,
       connections: [],
       createdAt: Date.now()
     };
-
-    setIdeas([newIdea, ...ideas]);
+    
+    setIdeas(prev => [newIdea, ...prev]);
     setInput("");
-    setIsProcessing(false);
-  };
+    setAiAnalyzing(false);
+  }, [input, getAIComment, apiKey]); // Added apiKey to dependency array
 
-  const generatePlanForExisting = async (id, text) => {
-    try {
-      const aiData = await callOpenAI(text);
-      setIdeas(prev => prev.map(idea => {
-        if (idea.id !== id) return idea;
-        return {
-          ...idea,
-          milestones: aiData.milestones.map((t, i) => ({ id: `m-${Date.now()}-${i}`, text: t, done: false })),
-          aiComment: aiData.comment // Refresh comment too
-        };
-      }));
-    } catch (err) {
-      alert("Could not generate plan: " + err.message);
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      analyzeAndAdd();
     }
-  };
+  }, [analyzeAndAdd]);
 
-  const toggleMilestone = (ideaId, milestoneId) => {
-    setIdeas(prev => prev.map(idea => {
-      if (idea.id !== ideaId) return idea;
-      const updatedMilestones = idea.milestones.map(m => 
-        m.id === milestoneId ? { ...m, done: !m.done } : m
-      );
-      // Auto-complete idea if all milestones done? Optional.
-      const allDone = updatedMilestones.every(m => m.done);
-      return { ...idea, milestones: updatedMilestones, completed: allDone ? true : idea.completed };
-    }));
-  };
+  // Idea Management Functions
+  const toggleComplete = useCallback((id) => {
+    setIdeas(ideas => ideas.map(idea =>
+      idea.id === id ? { ...idea, completed: !idea.completed } : idea
+    ));
+  }, []);
 
-  const toggleComplete = (id) => {
-    setIdeas(prev => prev.map(i => i.id === id ? { ...i, completed: !i.completed } : i));
-  };
-
-  const editIdea = (id, newText) => {
-    setIdeas(prev => prev.map(i => i.id === id ? { ...i, text: newText } : i));
-  };
-
-  const archiveIdea = (id) => {
-    const item = ideas.find(i => i.id === id);
-    if(item) {
-      setArchived([...archived, { ...item, archivedAt: Date.now() }]);
-      setIdeas(ideas.filter(i => i.id !== id));
+  const archiveIdea = useCallback((id) => {
+    const ideaToArchive = ideas.find(i => i.id === id);
+    if (ideaToArchive) {
+      setArchived(prev => [...prev, { ...ideaToArchive, archivedAt: Date.now() }]);
+      setIdeas(ideas => ideas.filter(i => i.id !== id));
     }
-  };
+  }, [ideas]);
 
-  const deleteIdea = (id) => setIdeas(ideas.filter(i => i.id !== id));
+  const deleteIdea = useCallback((id) => {
+    setIdeas(ideas => ideas.filter(i => i.id !== id));
+  }, []);
 
-  // Link Logic
-  const startLinking = (id) => { setLinkingMode(true); setLinkingFrom(id); };
-  const linkIdeas = (toId) => {
+  const editIdea = useCallback((id, newText) => {
+    setIdeas(ideas => ideas.map(idea =>
+      idea.id === id ? { ...idea, text: newText } : idea
+    ));
+  }, []);
+
+  // Connection Functions
+  const startLinking = useCallback((id) => {
+    setLinkingMode(true);
+    setLinkingFrom(id);
+  }, []);
+
+  const linkIdeas = useCallback((toId) => {
     if (linkingFrom && linkingFrom !== toId) {
-      setIdeas(prev => prev.map(i => {
-        if (i.id === linkingFrom) return { ...i, connections: [...new Set([...i.connections, toId])] };
-        if (i.id === toId) return { ...i, connections: [...new Set([...i.connections, linkingFrom])] };
-        return i;
+      setIdeas(ideas => ideas.map(idea => {
+        if (idea.id === linkingFrom) {
+          return { ...idea, connections: [...new Set([...idea.connections, toId])] };
+        }
+        if (idea.id === toId) {
+          return { ...idea, connections: [...new Set([...idea.connections, linkingFrom])] };
+        }
+        return idea;
       }));
     }
-    setLinkingMode(false); setLinkingFrom(null);
-  };
+    setLinkingMode(false);
+    setLinkingFrom(null);
+  }, [linkingFrom]);
 
-  // Filter Logic
-  const filteredIdeas = useMemo(() => ideas.filter(i => {
-    const matchSearch = i.text.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCat = filterCategory === "all" || i.category === filterCategory;
-    return matchSearch && matchCat;
-  }), [ideas, searchQuery, filterCategory]);
+  // Filter and Search (memoized)
+  const filteredIdeas = useMemo(() => 
+    ideas.filter(idea => {
+      const matchesSearch = idea.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            idea.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = filterCategory === "all" || idea.category === filterCategory;
+      return matchesSearch && matchesFilter;
+    }),
+  [ideas, searchQuery, filterCategory]);
 
-  const categories = useMemo(() => ["all", ...new Set(ideas.map(i => i.category))], [ideas]);
+  // Stats Calculation (memoized)
+  const categories = useMemo(() => [...new Set(ideas.map(i => i.category))], [ideas]);
+ 
+  const stats = useMemo(() => ({
+    total: ideas.length,
+    completed: ideas.filter(i => i.completed).length,
+    thisWeek: ideas.filter(i => Date.now() - i.createdAt < 7 * 24 * 60 * 60 * 1000).length,
+    archived: archived.length,
+    mostCommonCategory: categories.length > 0 
+      ? categories.reduce((a, b) => 
+          ideas.filter(i => i.category === a).length >= ideas.filter(i => i.category === b).length ? a : b
+        )
+      : "None"
+  }), [ideas, archived, categories]);
 
-  // --- RENDER ---
+  // Theme Variables
+  const isDark = theme === "dark";
+  const bgClass = isDark ? "bg-slate-900" : "bg-gradient-to-br from-slate-50 to-blue-50";
+  const textClass = isDark ? "text-white" : "text-slate-800";
+  const cardBg = isDark ? "bg-slate-800" : "bg-white";
+  const inputBg = isDark ? "bg-slate-800 text-white" : "bg-white";
+  const borderColor = isDark ? "border-slate-700" : "border-slate-200";
+
+  // Random Idea Feature
+  const getRandomIdea = useCallback(() => {
+    if (ideas.length === 0) return;
+    const randomIdea = ideas[Math.floor(Math.random() * ideas.length)];
+    setSearchQuery(randomIdea.text);
+    document.getElementById('search-input')?.scrollIntoView({ behavior: 'smooth' });
+  }, [ideas]);
+
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-300 ${isDark ? "bg-slate-900 text-slate-100" : "bg-slate-50 text-slate-800"}`}>
-      
-      {/* --- NAVBAR --- */}
-      <div className="max-w-7xl mx-auto p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div className={`min-h-screen p-4 md:p-12 font-sans ${textClass} ${bgClass} transition-colors duration-300`}>
+      {/* Header */}
+      <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight flex items-center gap-2">
-            Mind<span className="text-indigo-600">Mosaic</span> <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md align-middle">PRO</span>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
+            Mind<span className="text-indigo-600">Mosaic</span>
           </h1>
-          <p className="text-sm opacity-60">Turn chaotic thoughts into executed goals.</p>
+          <p className={`${isDark ? "text-slate-400" : "text-slate-500"} mt-2`}>
+            Your personal knowledge vault with AI insights
+          </p>
         </div>
-
-        <div className="flex gap-2 items-center">
-          <button onClick={() => setShowSettings(!showSettings)} className={`p-2.5 rounded-xl transition ${isDark ? "bg-slate-800 hover:bg-slate-700" : "bg-white hover:bg-slate-200 shadow-sm"}`}>
-             <Settings size={20} className={!apiKey ? "text-red-500 animate-pulse" : ""} />
+        
+        {/* Action Buttons */}
+        <div className="flex gap-3 items-center flex-wrap">
+          {/* --- NEW: SETTINGS BUTTON --- */}
+          <button
+            onClick={() => setShowSettings(true)}
+            className={`p-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+            title="Settings"
+          >
+            <Settings size={20} className={!apiKey ? "text-red-500 animate-pulse" : ""} />
           </button>
-          <button onClick={() => setTheme(isDark ? "light" : "dark")} className={`p-2.5 rounded-xl transition ${isDark ? "bg-slate-800 hover:bg-slate-700" : "bg-white hover:bg-slate-200 shadow-sm"}`}>
-             {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          {/* ---------------------------- */}
+
+          <button
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className={`p-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+            title="Toggle theme"
+            aria-label="Toggle dark/light mode"
+          >
+            {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+          {/* Export Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className={`px-4 py-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+              aria-label="Export options"
+            >
+              <Download size={18} />
+              <span className="hidden md:inline">Export</span>
+            </button>
+            
+            {showExportMenu && (
+              <div className={`absolute right-0 mt-2 w-56 ${cardBg} rounded-xl shadow-2xl p-2 z-50 ${borderColor} border`}>
+                <button
+                  onClick={() => { exportToMarkdown(); setShowExportMenu(false); }}
+                  className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3`}
+                >
+                  <FileText size={16} />
+                  <div>
+                    <div className="font-semibold">Markdown</div>
+                    <div className="text-xs opacity-70">Readable format</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { exportToObsidian(); setShowExportMenu(false); }}
+                  className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3`}
+                >
+                  <Network size={16} />
+                  <div>
+                    <div className="font-semibold">Obsidian Vault</div>
+                    <div className="text-xs opacity-70">With [[links]]</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { exportToJSON(); setShowExportMenu(false); }}
+                  className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3`}
+                >
+                  <Database size={16} />
+                  <div>
+                    <div className="font-semibold">JSON Backup</div>
+                    <div className="text-xs opacity-70">Full data export</div>
+                  </div>
+                </button>
+                <label className={`w-full text-left px-4 py-3 rounded-lg ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"} flex items-center gap-3 cursor-pointer`}>
+                  <Upload size={16} />
+                  <div>
+                    <div className="font-semibold">Import JSON</div>
+                    <div className="text-xs opacity-70">Restore backup</div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={importFromJSON}
+                    className="hidden"
+                    aria-label="Select JSON file to import"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setCloudSyncEnabled(!cloudSyncEnabled)}
+            className={`px-4 py-3 rounded-xl ${cloudSyncEnabled ? "bg-indigo-600 text-white" : cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 relative`}
+            title={cloudSyncEnabled ? "Cloud sync enabled" : "Enable cloud sync"}
+            aria-label="Toggle cloud sync"
+          >
+            <Share2 size={18} />
+            <span className="hidden md:inline">Cloud</span>
+            {syncStatus === "syncing" && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse" aria-label="Syncing"></div>
+            )}
+            {syncStatus === "synced" && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full" aria-label="Synced"></div>
+            )}
+          </button>
+          
+          <button
+            onClick={getRandomIdea}
+            className={`px-4 py-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+            aria-label="Get random idea"
+          >
+            <Sparkles size={18} />
+            <span className="hidden md:inline">Random</span>
+          </button>
+          <button
+            onClick={() => setShowAIComments(!showAIComments)}
+            className={`px-4 py-3 rounded-xl ${showAIComments ? "bg-indigo-600 text-white" : cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2`}
+            aria-label={`Toggle ${showAIComments ? 'off' : 'on'} AI comments`}
+          >
+            <MessageSquare size={18} />
+            <span className="hidden md:inline">AI</span>
+          </button>
+          <button
+            onClick={() => setViewMode(viewMode === "mosaic" ? "list" : "mosaic")}
+            className={`px-4 py-3 rounded-xl ${cardBg} shadow-md hover:shadow-lg transition flex items-center gap-2 ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
+            aria-label={`Switch to ${viewMode === "mosaic" ? "list" : "mosaic"} view`}
+          >
+            <TrendingUp size={18} />
+            <span className="hidden md:inline">{viewMode === "mosaic" ? "List" : "Grid"}</span>
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* --- SETTINGS MODAL --- */}
+      {/* --- NEW: SETTINGS MODAL --- */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl ${isDark ? "bg-slate-800" : "bg-white"}`}>
-            <h2 className="text-xl font-bold mb-4">Settings</h2>
+          <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl ${isDark ? "bg-slate-800 border border-slate-700" : "bg-white"}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2"><Settings size={20}/> Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="opacity-50 hover:opacity-100">✕</button>
+            </div>
+            
             <div className="mb-4">
-              <label className="block text-sm font-bold mb-2">OpenAI API Key</label>
+              <label className="block text-sm font-bold mb-2">Google Gemini API Key</label>
               <input 
                 type="password" 
                 value={apiKey} 
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                placeholder="Paste key starting with AIza..."
                 className={`w-full p-3 rounded-lg border outline-none ${isDark ? "bg-slate-900 border-slate-700" : "bg-slate-100 border-slate-300"}`}
               />
               <p className="text-xs mt-2 opacity-60">
-                Key is stored in your browser's LocalStorage. It is never sent to our servers.
-                Required for "Real AI" insights and plan generation.
+                Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-500 underline">aistudio.google.com</a>.
+                Key is stored locally in your browser.
               </p>
             </div>
-            <button 
-              onClick={() => setShowSettings(false)}
-              className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition"
-            >
+            
+            <button onClick={() => setShowSettings(false)} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">
               Save & Close
             </button>
           </div>
         </div>
       )}
+      {/* --------------------------- */}
 
-      {/* --- INPUT AREA --- */}
-      <div className="max-w-3xl mx-auto px-6 mb-10">
-        <div className="relative group">
-           <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
-           <div className={`relative p-2 rounded-2xl ${isDark ? "bg-slate-800" : "bg-white"} shadow-xl flex items-center`}>
-              <input 
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addIdea()}
-                placeholder={apiKey ? "Describe a goal (e.g., 'Learn Python in 30 days')..." : "Enter a thought (Add API Key for AI Plans)..."}
-                className="w-full bg-transparent p-4 text-lg outline-none"
-              />
-              <button 
-                onClick={addIdea}
-                disabled={isProcessing || !input.trim()}
-                className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 flex items-center gap-2 font-bold mx-2"
-              >
-                {isProcessing ? <div className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full" /> : <Plus size={24} />}
-                <span className="hidden md:inline">Add</span>
-              </button>
-           </div>
+      {/* Stats Dashboard */}
+      <div className="max-w-7xl mx-auto mb-8 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className={`${cardBg} p-4 rounded-xl shadow-md`} role="status" aria-label="Total ideas">
+          <div className={`text-2xl font-bold ${isDark ? "text-indigo-400" : "text-indigo-600"}`}>{stats.total}</div>
+          <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>Total Ideas</div>
+        </div>
+        <div className={`${cardBg} p-4 rounded-xl shadow-md`} role="status" aria-label="Completed ideas">
+          <div className={`text-2xl font-bold ${isDark ? "text-green-400" : "text-green-600"}`}>{stats.completed}</div>
+          <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>Completed</div>
+        </div>
+        <div className={`${cardBg} p-4 rounded-xl shadow-md`} role="status" aria-label="Ideas this week">
+          <div className={`text-2xl font-bold ${isDark ? "text-blue-400" : "text-blue-600"}`}>{stats.thisWeek}</div>
+          <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>This Week</div>
+        </div>
+        <div className={`${cardBg} p-4 rounded-xl shadow-md`} role="status" aria-label="Archived ideas">
+          <div className={`text-2xl font-bold ${isDark ? "text-purple-400" : "text-purple-600"}`}>{stats.archived}</div>
+          <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>Archived</div>
+        </div>
+        <div className={`${cardBg} p-4 rounded-xl shadow-md`} role="status" aria-label="Most common category">
+          <div className={`text-lg font-bold ${isDark ? "text-orange-400" : "text-orange-600"}`}>{stats.mostCommonCategory}</div>
+          <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>Top Category</div>
         </div>
       </div>
 
-      {/* --- DASHBOARD STATS --- */}
-      {/* (Simplified for brevity, kept essential structure) */}
-      <div className="max-w-7xl mx-auto px-6 mb-8">
-        <div className="flex flex-wrap gap-2 mb-6">
+      {/* Input Section */}
+      <div className="max-w-4xl mx-auto mb-8">
+        <div className="relative group">
+          <div className={`absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur ${isDark ? "opacity-50" : "opacity-25"} group-hover:opacity-75 transition duration-500`}></div>
+          <div className="relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder={apiKey ? "Enter a thought (AI enabled)..." : "What's on your mind? AI will roast or motivate you... 🤖"}
+              className={`block w-full p-6 pr-32 rounded-2xl border-none shadow-xl text-lg focus:ring-2 focus:ring-indigo-500 outline-none ${inputBg} ${isDark ? "placeholder-slate-500" : "placeholder-slate-400"} resize-none`}
+              rows="2"
+              aria-label="Add new idea"
+            />
+            <button
+              onClick={analyzeAndAdd}
+              disabled={aiAnalyzing || !input.trim()}
+              className="absolute right-3 top-3 bottom-3 bg-indigo-600 text-white px-6 rounded-xl font-semibold hover:bg-indigo-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Add idea"
+            >
+              {aiAnalyzing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Plus size={20} />
+                  <span>Add</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+          <input
+            id="search-input"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search ideas..."
+            className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} ${borderColor} border shadow-md focus:ring-2 focus:ring-indigo-500 outline-none`}
+            aria-label="Search ideas"
+          />
+        </div>
+        
+        <div className="flex gap-2 overflow-x-auto pb-2" role="tablist">
+          <button
+            onClick={() => setFilterCategory("all")}
+            className={`px-4 py-3 rounded-xl whitespace-nowrap transition ${
+              filterCategory === "all"
+                ? "bg-indigo-600 text-white shadow-lg"
+                : `${cardBg} ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`
+            }`}
+            role="tab"
+            aria-selected={filterCategory === "all"}
+          >
+            All
+          </button>
           {categories.map(cat => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
-              className={`px-4 py-2 rounded-full text-sm font-bold capitalize transition ${
-                filterCategory === cat 
-                ? "bg-indigo-600 text-white shadow-lg scale-105" 
-                : isDark ? "bg-slate-800 hover:bg-slate-700" : "bg-white hover:bg-slate-200 shadow"
+              className={`px-4 py-3 rounded-xl whitespace-nowrap transition ${
+                filterCategory === cat
+                  ? "bg-indigo-600 text-white shadow-lg"
+                  : `${cardBg} ${isDark ? "hover:bg-slate-700" : "hover:bg-slate-100"}`
               }`}
+              role="tab"
+              aria-selected={filterCategory === cat}
             >
               {cat}
             </button>
@@ -477,39 +966,55 @@ function App() {
         </div>
       </div>
 
-      {/* --- GRID --- */}
-      <div className="max-w-7xl mx-auto px-6 pb-20">
-        {linkingMode && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl animate-bounce flex items-center gap-3">
-            <span>Select another card to link</span>
-            <button onClick={() => setLinkingMode(false)} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-xs">Cancel</button>
+      {/* Linking Mode Banner */}
+      {linkingMode && (
+        <div className="max-w-7xl mx-auto mb-4" role="alert" aria-live="polite">
+          <div className="bg-indigo-600 text-white p-4 rounded-xl flex justify-between items-center">
+            <span>Click on another card to create a connection</span>
+            <button
+              onClick={() => {
+                setLinkingMode(false);
+                setLinkingFrom(null);
+              }}
+              className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition"
+              aria-label="Cancel linking"
+            >
+              Cancel
+            </button>
           </div>
-        )}
-
-        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${viewMode === 'list' ? '!grid-cols-1' : ''}`}>
-          {filteredIdeas.map(idea => (
-            <IdeaCard 
-              key={idea.id} 
-              idea={idea} 
-              ideas={ideas}
-              isDark={isDark}
-              apiKey={apiKey}
-              showAIComments={showAIComments}
-              linkingMode={linkingMode}
-              linkingFrom={linkingFrom}
-              onToggleComplete={toggleComplete}
-              onToggleMilestone={toggleMilestone}
-              onGeneratePlan={generatePlanForExisting}
-              onArchive={archiveIdea}
-              onDelete={deleteIdea}
-              onEdit={editIdea}
-              onStartLinking={startLinking}
-              onLinkIdeas={linkIdeas}
-            />
-          ))}
         </div>
+      )}
+
+      {/* Ideas Grid/List */}
+      <div className={`max-w-7xl mx-auto ${viewMode === "mosaic" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-[200px] gap-4" : "space-y-4"}`}>
+        {filteredIdeas.map((idea) => (
+          <IdeaCard
+            key={idea.id}
+            idea={idea}
+            ideas={ideas}
+            isDark={isDark}
+            showAIComments={showAIComments}
+            linkingMode={linkingMode}
+            linkingFrom={linkingFrom}
+            onToggleComplete={toggleComplete}
+            onArchive={archiveIdea}
+            onDelete={deleteIdea}
+            onStartLinking={startLinking}
+            onLinkIdeas={linkIdeas}
+            onEdit={editIdea}
+          />
+        ))}
       </div>
 
+      {/* Empty State */}
+      {filteredIdeas.length === 0 && (
+        <div className="max-w-7xl mx-auto text-center py-20" role="img" aria-label="No ideas">
+          <div className={`text-6xl mb-4 ${isDark ? 'opacity-20' : 'opacity-10'}`}>🤔</div>
+          <p className={`text-xl ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            No ideas found. Start adding some thoughts!
+          </p>
+        </div>
+      )}
     </div>
   );
 }
