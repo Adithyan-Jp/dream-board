@@ -1,3 +1,8 @@
+// ============================================
+// PART 1: IMPORTS, INITIAL DATA, AND STATE
+// Copy this entire part into your App.jsx
+// ============================================
+
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Trash2, Plus, Moon, Sun, Archive, Link2, Search, TrendingUp, Check, MessageSquare, Download, Upload, Share2, FileText, Database, Network } from 'lucide-react';
 
@@ -94,6 +99,13 @@ function App() {
       loadFromCloud();
     }
   }, [cloudSyncEnabled]);
+
+  // ============================================
+// PART 2: CORE FUNCTIONS
+// Paste this DIRECTLY after Part 1 (after the useEffect hooks)
+// DO NOT add any closing braces - just continue the App function
+// ============================================
+
   // Cloud Sync Functions
   const syncToCloud = async () => {
     if (!window.storage) return;
@@ -307,6 +319,14 @@ Generated: ${new Date().toLocaleString()}
       return { comment: motivational[Math.floor(Math.random() * motivational.length)], sentiment: "neutral" };
     }
   };
+
+  // NOW CONTINUE TO PART 3 - DO NOT ADD ANY CLOSING BRACES HERE!
+  // ============================================
+// PART 3: ACTION FUNCTIONS & HELPERS
+// Paste this DIRECTLY after Part 2
+// DO NOT add any closing braces - just continue the App function
+// ============================================
+
   // Add New Idea with AI Analysis
   const analyzeAndAdd = async () => {
     if (!input.trim()) return;
@@ -462,6 +482,14 @@ Generated: ${new Date().toLocaleString()}
     setSearchQuery(randomIdea.text);
     document.getElementById('search-input')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // NOW GO TO PART 4 for the return statement - DO NOT ADD ANY CLOSING BRACES HERE!
+  // ============================================
+// PART 4: JSX RENDER (THE UI)
+// Add this return statement after all the functions from Part 3
+// Then close the App function and add export
+// ============================================
+
   return (
     <div className={`min-h-screen p-4 md:p-12 font-sans ${textClass} ${bgClass} transition-colors duration-300`}>
       {/* Header */}
@@ -824,3 +852,4 @@ Generated: ${new Date().toLocaleString()}
 
 export default App;
 
+  // NOW CONTINUE TO PART 2 - DO NOT ADD ANY CLOSING BRACES HERE!
